@@ -1,0 +1,425 @@
+// lib/screens/monthly_report_screen.dart
+
+import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import 'package:fl_chart/fl_chart.dart';
+import '../services/api_service.dart';
+
+class MonthlyReportScreen extends StatefulWidget {
+  const MonthlyReportScreen({super.key});
+
+  @override
+  State<MonthlyReportScreen> createState() => _MonthlyReportScreenState();
+}
+
+class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
+  final _apiService = ApiService();
+  Map<String, dynamic>? _report;
+  bool _isLoading = true;
+  DateTime _selectedDate = DateTime.now();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadReport();
+  }
+
+  Future<void> _loadReport() async {
+    setState(() => _isLoading = true);
+    try {
+      final report = await _apiService.getMonthlyReport(
+        _selectedDate.year,
+        _selectedDate.month,
+      );
+      setState(() => _report = report);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  String _formatCurrency(dynamic amount) {
+    final formatter = NumberFormat.currency(
+      locale: 'id_ID',
+      symbol: 'Rp ',
+      decimalDigits: 0,
+    );
+    return formatter.format(double.parse(amount.toString()));
+  }
+
+  Future<void> _selectMonth() async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+      initialDatePickerMode: DatePickerMode.year,
+    );
+    if (picked != null && picked != _selectedDate) {
+      setState(() => _selectedDate = picked);
+      _loadReport();
+    }
+  }
+
+  List<PieChartSectionData> _buildExpenseSections() {
+    if (_report == null) return [];
+    
+    final expenseByCategory = _report!['expense_by_category'] as Map<String, dynamic>;
+    if (expenseByCategory.isEmpty) return [];
+
+    final colors = [
+      Colors.red,
+      Colors.orange,
+      Colors.amber,
+      Colors.purple,
+      Colors.pink,
+      Colors.teal,
+    ];
+
+    int index = 0;
+    return expenseByCategory.entries.map((entry) {
+      final color = colors[index % colors.length];
+      index++;
+      final value = double.parse(entry.value.toString());
+      final total = expenseByCategory.values.fold<double>(
+        0,
+        (sum, v) => sum + double.parse(v.toString()),
+      );
+      final percentage = (value / total * 100).toStringAsFixed(1);
+
+      return PieChartSectionData(
+        color: color,
+        value: value,
+        title: '$percentage%',
+        radius: 100,
+        titleStyle: const TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.bold,
+          color: Colors.white,
+        ),
+      );
+    }).toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Theme.of(context).colorScheme.surfaceContainerLowest,
+      appBar: AppBar(
+        title: const Text('Monthly Report'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        actions: [
+          IconButton(
+            onPressed: _selectMonth,
+            icon: const Icon(Icons.calendar_month_rounded),
+          ),
+        ],
+      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _report == null
+              ? const Center(child: Text('No data available'))
+              : RefreshIndicator(
+                  onRefresh: _loadReport,
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Center(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 12,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .primaryContainer,
+                              borderRadius: BorderRadius.circular(24),
+                            ),
+                            child: Text(
+                              DateFormat('MMMM yyyy').format(_selectedDate),
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onPrimaryContainer,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        
+                        // Summary Cards
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildSummaryCard(
+                                'Income',
+                                _formatCurrency(_report!['income']),
+                                Icons.arrow_downward_rounded,
+                                Colors.green,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: _buildSummaryCard(
+                                'Expense',
+                                _formatCurrency(_report!['expense']),
+                                Icons.arrow_upward_rounded,
+                                Colors.red,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        _buildSummaryCard(
+                          'Balance',
+                          _formatCurrency(_report!['balance']),
+                          Icons.account_balance_wallet_rounded,
+                          Theme.of(context).colorScheme.primary,
+                          isLarge: true,
+                        ),
+                        const SizedBox(height: 32),
+
+                        // Expense Chart
+                        if ((_report!['expense_by_category'] as Map).isNotEmpty) ...[
+                          Text(
+                            'Expense by Category',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Theme.of(context).colorScheme.onSurface,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          Container(
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.surface,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .outlineVariant
+                                    .withOpacity(0.5),
+                              ),
+                            ),
+                            child: Column(
+                              children: [
+                                SizedBox(
+                                  height: 200,
+                                  child: PieChart(
+                                    PieChartData(
+                                      sections: _buildExpenseSections(),
+                                      centerSpaceRadius: 40,
+                                      sectionsSpace: 2,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 24),
+                                ..._buildLegend(),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 32),
+                        ],
+
+                        // Income Categories
+                        if ((_report!['income_by_category'] as Map).isNotEmpty) ...[
+                          Text(
+                            'Income Categories',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Theme.of(context).colorScheme.onSurface,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          ..._buildCategoryList(
+                            _report!['income_by_category'] as Map<String, dynamic>,
+                            Colors.green,
+                          ),
+                          const SizedBox(height: 24),
+                        ],
+
+                        // Expense Categories
+                        if ((_report!['expense_by_category'] as Map).isNotEmpty) ...[
+                          Text(
+                            'Expense Categories',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Theme.of(context).colorScheme.onSurface,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          ..._buildCategoryList(
+                            _report!['expense_by_category'] as Map<String, dynamic>,
+                            Colors.red,
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+    );
+  }
+
+  Widget _buildSummaryCard(
+    String title,
+    String amount,
+    IconData icon,
+    Color color, {
+    bool isLarge = false,
+  }) {
+    return Container(
+      padding: EdgeInsets.all(isLarge ? 24 : 20),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: color.withOpacity(0.3),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment:
+            isLarge ? CrossAxisAlignment.center : CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: isLarge
+                ? MainAxisAlignment.center
+                : MainAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, color: color, size: 20),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 14,
+                  color:
+                      Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: isLarge ? 12 : 8),
+          Text(
+            amount,
+            style: TextStyle(
+              fontSize: isLarge ? 28 : 20,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+            textAlign: isLarge ? TextAlign.center : TextAlign.start,
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<Widget> _buildLegend() {
+    if (_report == null) return [];
+    
+    final expenseByCategory = _report!['expense_by_category'] as Map<String, dynamic>;
+    if (expenseByCategory.isEmpty) return [];
+
+    final colors = [
+      Colors.red,
+      Colors.orange,
+      Colors.amber,
+      Colors.purple,
+      Colors.pink,
+      Colors.teal,
+    ];
+
+    int index = 0;
+    return expenseByCategory.entries.map((entry) {
+      final color = colors[index % colors.length];
+      index++;
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: Row(
+          children: [
+            Container(
+              width: 16,
+              height: 16,
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                entry.key,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
+              ),
+            ),
+            Text(
+              _formatCurrency(entry.value),
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+            ),
+          ],
+        ),
+      );
+    }).toList();
+  }
+
+  List<Widget> _buildCategoryList(Map<String, dynamic> categories, Color color) {
+    return categories.entries.map((entry) {
+      return Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: Theme.of(context).colorScheme.outlineVariant.withOpacity(0.5),
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              entry.key,
+              style: TextStyle(
+                fontSize: 16,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+            ),
+            Text(
+              _formatCurrency(entry.value),
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
+          ],
+        ),
+      );
+    }).toList();
+  }
+}

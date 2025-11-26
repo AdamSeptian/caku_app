@@ -1,0 +1,39 @@
+name: finance_app
+description: Daily Finance Tracker App
+
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # HTTP & API
+  http: ^1.1.0
+  
+  # State Management
+  provider: ^6.1.1
+  
+  # Local Storage
+  shared_preferences: ^2.2.2
+  
+  # UI
+  intl: ^0.18.1
+  flutter_spinkit: ^5.2.0
+  fl_chart: ^0.68.0
+  google_fonts: ^6.1.0
+
+  cupertino_icons: ^1.0.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
