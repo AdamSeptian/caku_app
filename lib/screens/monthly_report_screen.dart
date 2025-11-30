@@ -31,8 +31,12 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
         _selectedDate.year,
         _selectedDate.month,
       );
+      
+      print('Report Data: $report');
+      
       setState(() => _report = report);
     } catch (e) {
+      print('Load Report Error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error: $e')),
@@ -69,8 +73,11 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
   List<PieChartSectionData> _buildExpenseSections() {
     if (_report == null) return [];
     
-    final expenseByCategory = _report!['expense_by_category'] as Map<String, dynamic>;
-    if (expenseByCategory.isEmpty) return [];
+    final expenseByCategory = _report!['expense_by_category'];
+    if (expenseByCategory == null || expenseByCategory is! Map) return [];
+    
+    final categories = Map<String, dynamic>.from(expenseByCategory);
+    if (categories.isEmpty) return [];
 
     final colors = [
       Colors.red,
@@ -82,11 +89,11 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
     ];
 
     int index = 0;
-    return expenseByCategory.entries.map((entry) {
+    return categories.entries.map((entry) {
       final color = colors[index % colors.length];
       index++;
       final value = double.parse(entry.value.toString());
-      final total = expenseByCategory.values.fold<double>(
+      final total = categories.values.fold<double>(
         0,
         (sum, v) => sum + double.parse(v.toString()),
       );
@@ -192,7 +199,9 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
                         const SizedBox(height: 32),
 
                         // Expense Chart
-                        if ((_report!['expense_by_category'] as Map).isNotEmpty) ...[
+                        if (_report!['expense_by_category'] != null &&
+                            _report!['expense_by_category'] is Map &&
+                            (_report!['expense_by_category'] as Map).isNotEmpty) ...[
                           Text(
                             'Expense by Category',
                             style: TextStyle(
@@ -235,7 +244,9 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
                         ],
 
                         // Income Categories
-                        if ((_report!['income_by_category'] as Map).isNotEmpty) ...[
+                        if (_report!['income_by_category'] != null &&
+                            _report!['income_by_category'] is Map &&
+                            (_report!['income_by_category'] as Map).isNotEmpty) ...[
                           Text(
                             'Income Categories',
                             style: TextStyle(
@@ -246,14 +257,16 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
                           ),
                           const SizedBox(height: 16),
                           ..._buildCategoryList(
-                            _report!['income_by_category'] as Map<String, dynamic>,
+                            Map<String, dynamic>.from(_report!['income_by_category']),
                             Colors.green,
                           ),
                           const SizedBox(height: 24),
                         ],
 
                         // Expense Categories
-                        if ((_report!['expense_by_category'] as Map).isNotEmpty) ...[
+                        if (_report!['expense_by_category'] != null &&
+                            _report!['expense_by_category'] is Map &&
+                            (_report!['expense_by_category'] as Map).isNotEmpty) ...[
                           Text(
                             'Expense Categories',
                             style: TextStyle(
@@ -264,7 +277,7 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
                           ),
                           const SizedBox(height: 16),
                           ..._buildCategoryList(
-                            _report!['expense_by_category'] as Map<String, dynamic>,
+                            Map<String, dynamic>.from(_report!['expense_by_category']),
                             Colors.red,
                           ),
                         ],
@@ -337,8 +350,11 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
   List<Widget> _buildLegend() {
     if (_report == null) return [];
     
-    final expenseByCategory = _report!['expense_by_category'] as Map<String, dynamic>;
-    if (expenseByCategory.isEmpty) return [];
+    final expenseByCategory = _report!['expense_by_category'];
+    if (expenseByCategory == null || expenseByCategory is! Map) return [];
+    
+    final categories = Map<String, dynamic>.from(expenseByCategory);
+    if (categories.isEmpty) return [];
 
     final colors = [
       Colors.red,
@@ -350,7 +366,7 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
     ];
 
     int index = 0;
-    return expenseByCategory.entries.map((entry) {
+    return categories.entries.map((entry) {
       final color = colors[index % colors.length];
       index++;
       return Padding(

@@ -6,7 +6,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
   static const String baseUrl = 'http://localhost:8000/api';
-  
   Future<String?> _getToken() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString('token');
@@ -24,42 +23,76 @@ class ApiService {
 
   // Auth Methods
   Future<Map<String, dynamic>> register(String name, String email, String password) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/register'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'name': name,
-        'email': email,
-        'password': password,
-        'password_confirmation': password,
-      }),
-    );
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/register'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'name': name,
+          'email': email,
+          'password': password,
+          'password_confirmation': password,
+        }),
+      );
 
-    if (response.statusCode == 201) {
-      final data = jsonDecode(response.body);
-      await _saveToken(data['token']);
-      return data;
-    } else {
-      throw Exception(jsonDecode(response.body)['message'] ?? 'Registration failed');
+      print('Register Response Status: ${response.statusCode}');
+      print('Register Response Body: ${response.body}');
+
+      if (response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+        await _saveToken(data['token']);
+        return data;
+      } else {
+        // Try to parse error message
+        try {
+          final error = jsonDecode(response.body);
+          throw Exception(error['message'] ?? 'Registration failed');
+        } catch (e) {
+          throw Exception('Server error: ${response.statusCode}. Check if Laravel is running at $baseUrl');
+        }
+      }
+    } catch (e) {
+      print('Register Error: $e');
+      if (e.toString().contains('SocketException') || e.toString().contains('Connection refused')) {
+        throw Exception('Cannot connect to server. Please check:\n1. Laravel is running\n2. URL is correct: $baseUrl\n3. Phone and computer on same WiFi');
+      }
+      rethrow;
     }
   }
 
   Future<Map<String, dynamic>> login(String email, String password) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/login'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'email': email,
-        'password': password,
-      }),
-    );
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/login'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'email': email,
+          'password': password,
+        }),
+      );
 
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      await _saveToken(data['token']);
-      return data;
-    } else {
-      throw Exception(jsonDecode(response.body)['message'] ?? 'Login failed');
+      print('Login Response Status: ${response.statusCode}');
+      print('Login Response Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        await _saveToken(data['token']);
+        return data;
+      } else {
+        // Try to parse error message
+        try {
+          final error = jsonDecode(response.body);
+          throw Exception(error['message'] ?? 'Login failed');
+        } catch (e) {
+          throw Exception('Server error: ${response.statusCode}. Check if Laravel is running at $baseUrl');
+        }
+      }
+    } catch (e) {
+      print('Login Error: $e');
+      if (e.toString().contains('SocketException') || e.toString().contains('Connection refused')) {
+        throw Exception('Cannot connect to server. Please check:\n1. Laravel is running\n2. URL is correct: $baseUrl\n3. Phone and computer on same WiFi');
+      }
+      rethrow;
     }
   }
 
@@ -162,19 +195,37 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> getMonthlyReport(int year, int month) async {
-    final token = await _getToken();
-    final response = await http.get(
-      Uri.parse('$baseUrl/monthly-report?year=$year&month=$month'),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
-    );
+    try {
+      final token = await _getToken();
+      final response = await http.get(
+        Uri.parse('$baseUrl/monthly-report?year=$year&month=$month'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
 
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body);
-    } else {
-      throw Exception('Failed to load monthly report');
+      print('Monthly Report Response Status: ${response.statusCode}');
+      print('Monthly Report Response Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        
+        // Ensure income_by_category and expense_by_category are Maps
+        if (data['income_by_category'] == null) {
+          data['income_by_category'] = {};
+        }
+        if (data['expense_by_category'] == null) {
+          data['expense_by_category'] = {};
+        }
+        
+        return data;
+      } else {
+        throw Exception('Failed to load monthly report');
+      }
+    } catch (e) {
+      print('Monthly Report Error: $e');
+      rethrow;
     }
   }
 }
