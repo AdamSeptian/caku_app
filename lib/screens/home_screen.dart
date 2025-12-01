@@ -7,6 +7,7 @@ import 'add_transaction_screen.dart';
 import 'monthly_report_screen.dart';
 import 'login_screen.dart';
 
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -24,6 +25,9 @@ class _HomeScreenState extends State<HomeScreen> {
   };
   bool _isLoading = true;
   int _selectedIndex = 0;
+
+  bool _deleteMode = false;
+  Set<int> _selectedTransactions = {};
 
   @override
   void initState() {
@@ -214,7 +218,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                   Text(
                                     'Total Balance',
                                     style: TextStyle(
-                                      color: Colors.white.withValues(alpha: 0.9),
+                                      color:
+                                          Colors.white.withValues(alpha: 0.9),
                                       fontSize: 14,
                                       fontWeight: FontWeight.w500,
                                     ),
@@ -235,8 +240,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                         child: Container(
                                           padding: const EdgeInsets.all(16),
                                           decoration: BoxDecoration(
-                                            color:
-                                                Colors.white.withValues(alpha: 0.2),
+                                            color: Colors.white
+                                                .withValues(alpha: 0.2),
                                             borderRadius:
                                                 BorderRadius.circular(16),
                                           ),
@@ -251,7 +256,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                                         const EdgeInsets.all(8),
                                                     decoration: BoxDecoration(
                                                       color: Colors.green
-                                                          .withValues(alpha: 0.3),
+                                                          .withValues(
+                                                              alpha: 0.3),
                                                       borderRadius:
                                                           BorderRadius.circular(
                                                               8),
@@ -268,7 +274,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                                     'Income',
                                                     style: TextStyle(
                                                       color: Colors.white
-                                                          .withValues(alpha: 0.9),
+                                                          .withValues(
+                                                              alpha: 0.9),
                                                       fontSize: 12,
                                                     ),
                                                   ),
@@ -293,8 +300,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                         child: Container(
                                           padding: const EdgeInsets.all(16),
                                           decoration: BoxDecoration(
-                                            color:
-                                                Colors.white.withValues(alpha: 0.2),
+                                            color: Colors.white
+                                                .withValues(alpha: 0.2),
                                             borderRadius:
                                                 BorderRadius.circular(16),
                                           ),
@@ -309,7 +316,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                                         const EdgeInsets.all(8),
                                                     decoration: BoxDecoration(
                                                       color: Colors.red
-                                                          .withValues(alpha: 0.3),
+                                                          .withValues(
+                                                              alpha: 0.3),
                                                       borderRadius:
                                                           BorderRadius.circular(
                                                               8),
@@ -326,7 +334,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                                     'Expense',
                                                     style: TextStyle(
                                                       color: Colors.white
-                                                          .withValues(alpha: 0.9),
+                                                          .withValues(
+                                                              alpha: 0.9),
                                                       fontSize: 12,
                                                     ),
                                                   ),
@@ -420,9 +429,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                   return Container(
                                     margin: const EdgeInsets.only(bottom: 12),
                                     decoration: BoxDecoration(
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .surface,
+                                      color:
+                                          Theme.of(context).colorScheme.surface,
                                       borderRadius: BorderRadius.circular(16),
                                       border: Border.all(
                                         color: Theme.of(context)
@@ -437,25 +445,51 @@ class _HomeScreenState extends State<HomeScreen> {
                                         horizontal: 16,
                                         vertical: 8,
                                       ),
-                                      leading: Container(
-                                        padding: const EdgeInsets.all(12),
-                                        decoration: BoxDecoration(
-                                          color: isIncome
-                                              ? Colors.green.withValues(alpha: 0.1)
-                                              : Colors.red.withValues(alpha: 0.1),
-                                          borderRadius:
-                                              BorderRadius.circular(12),
-                                        ),
-                                        child: Icon(
-                                          isIncome
-                                              ? Icons.arrow_downward_rounded
-                                              : Icons.arrow_upward_rounded,
-                                          color: isIncome
-                                              ? Colors.green
-                                              : Colors.red,
-                                          size: 20,
-                                        ),
-                                      ),
+
+                                      // ============================
+                                      // TAMBAHAN: tanda centang saat delete mode
+                                      // ============================
+                                      leading: _deleteMode
+                                          ? Checkbox(
+                                              value: _selectedTransactions
+                                                  .contains(transaction['id']),
+                                              onChanged: (value) {
+                                                setState(() {
+                                                  if (value == true) {
+                                                    _selectedTransactions
+                                                        .add(transaction['id']);
+                                                  } else {
+                                                    _selectedTransactions
+                                                        .remove(
+                                                            transaction['id']);
+                                                  }
+                                                });
+                                              },
+                                            )
+                                          : Container(
+                                              padding: const EdgeInsets.all(12),
+                                              decoration: BoxDecoration(
+                                                color: isIncome
+                                                    ? Colors.green
+                                                        .withValues(alpha: 0.1)
+                                                    : Colors.red
+                                                        .withValues(alpha: 0.1),
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                              ),
+                                              child: Icon(
+                                                isIncome
+                                                    ? Icons
+                                                        .arrow_downward_rounded
+                                                    : Icons
+                                                        .arrow_upward_rounded,
+                                                color: isIncome
+                                                    ? Colors.green
+                                                    : Colors.red,
+                                                size: 20,
+                                              ),
+                                            ),
+
                                       title: Text(
                                         transaction['category'],
                                         style: TextStyle(
@@ -465,6 +499,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                               .onSurface,
                                         ),
                                       ),
+
                                       subtitle: transaction['description'] !=
                                                   null &&
                                               transaction['description']
@@ -483,71 +518,55 @@ class _HomeScreenState extends State<HomeScreen> {
                                               ),
                                             )
                                           : null,
-                                      trailing: Column(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.end,
-                                        children: [
-                                          Text(
-                                            _formatCurrency(
-                                                transaction['amount']),
-                                            style: TextStyle(
-                                              color: isIncome
-                                                  ? Colors.green
-                                                  : Colors.red,
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 16,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            DateFormat('dd MMM').format(
-                                              DateTime.parse(
-                                                  transaction['date']),
-                                            ),
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: Theme.of(context)
-                                                  .colorScheme
-                                                  .onSurface
-                                                  .withValues(alpha: 0.5),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      onLongPress: () {
-                                        showDialog(
-                                          context: context,
-                                          builder: (context) => AlertDialog(
-                                            title:
-                                                const Text('Delete Transaction'),
-                                            content: const Text(
-                                              'Are you sure you want to delete this transaction?',
-                                            ),
-                                            actions: [
-                                              TextButton(
-                                                onPressed: () =>
-                                                    Navigator.pop(context),
-                                                child: const Text('Cancel'),
-                                              ),
-                                              FilledButton(
-                                                onPressed: () {
-                                                  Navigator.pop(context);
-                                                  _deleteTransaction(
-                                                      transaction['id']);
-                                                },
-                                                style: FilledButton.styleFrom(
-                                                  backgroundColor:
-                                                      Theme.of(context)
-                                                          .colorScheme
-                                                          .error,
+
+                                      trailing: !_deleteMode
+                                          ? Column(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.end,
+                                              children: [
+                                                Text(
+                                                  _formatCurrency(
+                                                      transaction['amount']),
+                                                  style: TextStyle(
+                                                    color: isIncome
+                                                        ? Colors.green
+                                                        : Colors.red,
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 16,
+                                                  ),
                                                 ),
-                                                child: const Text('Delete'),
-                                              ),
-                                            ],
-                                          ),
-                                        );
+                                                const SizedBox(height: 4),
+                                                Text(
+                                                  DateFormat('dd MMM').format(
+                                                    DateTime.parse(
+                                                        transaction['date']),
+                                                  ),
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    color: Theme.of(context)
+                                                        .colorScheme
+                                                        .onSurface
+                                                        .withValues(alpha: 0.5),
+                                                  ),
+                                                ),
+                                              ],
+                                            )
+                                          : null,
+                                      onTap: () {
+                                        if (_deleteMode) {
+                                          setState(() {
+                                            if (_selectedTransactions
+                                                .contains(transaction['id'])) {
+                                              _selectedTransactions
+                                                  .remove(transaction['id']);
+                                            } else {
+                                              _selectedTransactions
+                                                  .add(transaction['id']);
+                                            }
+                                          });
+                                        }
                                       },
                                     ),
                                   );
@@ -560,19 +579,63 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () async {
-          await Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const AddTransactionScreen(),
-            ),
-          );
-          _loadData();
-        },
-        icon: const Icon(Icons.add_rounded),
-        label: const Text('Add'),
-        elevation: 4,
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          FloatingActionButton(
+              heroTag: "deleteBtn",
+              backgroundColor: _deleteMode ? Colors.red : Colors.grey[800],
+              child: Icon(
+                _deleteMode ? Icons.delete_forever : Icons.delete,
+                color: Colors.white,
+              ),
+              onPressed: () async {
+                if (!_deleteMode) {
+                  setState(() {
+                    _deleteMode = true;
+                    _selectedTransactions.clear();
+                  });
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content:
+                          Text("Pilih transaksi yang mau dihapus"),
+                    ),
+                  );
+                  return;
+                }
+                if (_selectedTransactions.isEmpty) {
+                  setState(() {
+                    _deleteMode = false;
+                    _selectedTransactions.clear();
+                  });
+                  return;
+                }
+                for (var id in _selectedTransactions) {
+                  await _deleteTransaction(id);
+                }
+                setState(() {
+                  _deleteMode = false;
+                  _selectedTransactions.clear();
+                });
+              }),
+          const SizedBox(height: 12),
+          FloatingActionButton.extended(
+            heroTag: "addBtn",
+            onPressed: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const AddTransactionScreen(),
+                ),
+              );
+              _loadData();
+            },
+            icon: const Icon(Icons.add_rounded),
+            label: const Text('Add'),
+          ),
+        ],
       ),
     );
   }
