@@ -6,7 +6,7 @@ import '../services/api_service.dart';
 import 'add_transaction_screen.dart';
 import 'monthly_report_screen.dart';
 import 'login_screen.dart';
-
+import 'EditTransactionScreen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -554,7 +554,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                               ],
                                             )
                                           : null,
-                                      onTap: () {
+                                      onTap: () async {
                                         if (_deleteMode) {
                                           setState(() {
                                             if (_selectedTransactions
@@ -566,7 +566,22 @@ class _HomeScreenState extends State<HomeScreen> {
                                                   .add(transaction['id']);
                                             }
                                           });
+                                          return;
                                         }
+
+                                        // 👉 MASUK KE EDIT SCREEN
+                                        await Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) =>
+                                                EditTransactionScreen(
+                                              transaction: transaction,
+                                            ),
+                                          ),
+                                        );
+
+                                        // 👉 Refresh data setelah edit
+                                        _loadData();
                                       },
                                     ),
                                   );
@@ -599,8 +614,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content:
-                          Text("Pilih transaksi yang mau dihapus"),
+                      content: Text("Pilih transaksi yang mau dihapus"),
                     ),
                   );
                   return;
