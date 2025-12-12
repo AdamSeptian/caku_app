@@ -1,8 +1,8 @@
-// lib/screens/add_transaction_screen.dart
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../services/api_service.dart';
+import 'package:provider/provider.dart';
+import '../providers/transaction_provider.dart';
 
 class AddTransactionScreen extends StatefulWidget {
   const AddTransactionScreen({super.key});
@@ -16,13 +16,10 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   final _amountController = TextEditingController();
   final _categoryController = TextEditingController();
   final _descriptionController = TextEditingController();
-  final _apiService = ApiService();
   
   String _type = 'expense';
   DateTime _selectedDate = DateTime.now();
-  bool _isLoading = false;
 
-  // Predefined categories
   final List<String> _incomeCategories = [
     'Salary',
     'Bonus',
@@ -58,46 +55,43 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     }
   }
 
-  Future<void> _saveTransaction() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    setState(() => _isLoading = true);
-
-    try {
-      await _apiService.createTransaction({
-        'type': _type,
-        'amount': double.parse(_amountController.text),
-        'category': _categoryController.text,
-        'description': _descriptionController.text,
-        'date': DateFormat('yyyy-MM-dd').format(_selectedDate),
-      });
-
-      if (mounted) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Transaction added successfully'),
-            backgroundColor: Theme.of(context).colorScheme.primary,
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Theme.of(context).colorScheme.error,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
+    final transactionProvider = Provider.of<TransactionProvider>(context);
     final currentCategories = _type == 'income' ? _incomeCategories : _expenseCategories;
+
+    Future<void> _saveTransaction() async {
+      if (!_formKey.currentState!.validate()) return;
+
+      try {
+        await transactionProvider.addTransaction({
+          'type': _type,
+          'amount': double.parse(_amountController.text),
+          'category': _categoryController.text,
+          'description': _descriptionController.text,
+          'date': DateFormat('yyyy-MM-dd').format(_selectedDate),
+        });
+
+        if (mounted) {
+          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Transaction added successfully'),
+              backgroundColor: Theme.of(context).colorScheme.primary,
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error: $e'),
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+          );
+        }
+      }
+    }
 
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surfaceContainerLowest,
@@ -113,7 +107,6 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Transaction Type Selector
               Container(
                 padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
@@ -210,7 +203,6 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
               ),
               const SizedBox(height: 32),
 
-              // Amount Input
               Text(
                 'Amount',
                 style: TextStyle(
@@ -253,7 +245,6 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Category Selection
               Text(
                 'Category',
                 style: TextStyle(
@@ -303,7 +294,6 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Description
               Text(
                 'Description (Optional)',
                 style: TextStyle(
@@ -327,7 +317,6 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Date Picker
               Text(
                 'Date',
                 style: TextStyle(
@@ -369,12 +358,11 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
               ),
               const SizedBox(height: 32),
 
-              // Save Button
               SizedBox(
                 width: double.infinity,
                 height: 56,
                 child: FilledButton(
-                  onPressed: _isLoading ? null : _saveTransaction,
+                  onPressed: transactionProvider.isLoading ? null : _saveTransaction,
                   style: FilledButton.styleFrom(
                     backgroundColor: _type == 'income'
                         ? Colors.green
@@ -383,7 +371,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                       borderRadius: BorderRadius.circular(16),
                     ),
                   ),
-                  child: _isLoading
+                  child: transactionProvider.isLoading
                       ? const SizedBox(
                           height: 20,
                           width: 20,

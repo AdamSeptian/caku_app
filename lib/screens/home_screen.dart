@@ -1,8 +1,9 @@
-// lib/screens/home_screen.dart
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../services/api_service.dart';
+import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
+import '../providers/transaction_provider.dart';
 import 'add_transaction_screen.dart';
 import 'monthly_report_screen.dart';
 import 'login_screen.dart';
@@ -16,70 +17,23 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final _apiService = ApiService();
-  List<dynamic> _transactions = [];
-  Map<String, dynamic> _balance = {
-    'income': 0.0,
-    'expense': 0.0,
-    'balance': 0.0,
-  };
-  bool _isLoading = true;
-  int _selectedIndex = 0;
-
-  bool _deleteMode = false;
-  Set<int> _selectedTransactions = {};
-
   @override
   void initState() {
     super.initState();
-    _loadData();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<TransactionProvider>(context, listen: false).loadData();
+    });
   }
 
-  Future<void> _loadData() async {
-    setState(() => _isLoading = true);
+  Future<void> _logout(BuildContext context) async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    
     try {
-      final transactions = await _apiService.getTransactions();
-      final balance = await _apiService.getBalance();
-      setState(() {
-        _transactions = transactions;
-        _balance = balance;
-      });
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
-      }
-    } finally {
-      setState(() => _isLoading = false);
-    }
-  }
-
-  Future<void> _logout() async {
-    try {
-      await _apiService.logout();
+      await authProvider.logout();
       if (mounted) {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const LoginScreen()),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
-      }
-    }
-  }
-
-  Future<void> _deleteTransaction(int id) async {
-    try {
-      await _apiService.deleteTransaction(id);
-      _loadData();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Transaction deleted')),
         );
       }
     } catch (e) {
@@ -102,13 +56,16 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final transactionProvider = Provider.of<TransactionProvider>(context);
+    final authProvider = Provider.of<AuthProvider>(context);
+
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surfaceContainerLowest,
       body: SafeArea(
-        child: _isLoading
+        child: transactionProvider.isLoading
             ? const Center(child: CircularProgressIndicator())
             : RefreshIndicator(
-                onRefresh: _loadData,
+                onRefresh: () => transactionProvider.loadData(),
                 child: CustomScrollView(
                   slivers: [
                     SliverToBoxAdapter(
@@ -130,7 +87,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                         color: Theme.of(context)
                                             .colorScheme
                                             .onSurface
-                                            .withValues(alpha: 0.6),
+                                            .withOpacity(0.6),
                                       ),
                                     ),
                                     const SizedBox(height: 4),
@@ -170,7 +127,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     ),
                                     const SizedBox(width: 8),
                                     IconButton(
-                                      onPressed: _logout,
+                                      onPressed: () => _logout(context),
                                       icon: const Icon(Icons.logout_rounded),
                                       style: IconButton.styleFrom(
                                         backgroundColor: Theme.of(context)
@@ -197,7 +154,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     Theme.of(context)
                                         .colorScheme
                                         .primary
-                                        .withValues(alpha: 0.7),
+                                        .withOpacity(0.7),
                                   ],
                                 ),
                                 borderRadius: BorderRadius.circular(24),
@@ -206,7 +163,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     color: Theme.of(context)
                                         .colorScheme
                                         .primary
-                                        .withValues(alpha: 0.3),
+                                        .withOpacity(0.3),
                                     blurRadius: 20,
                                     offset: const Offset(0, 10),
                                   ),
@@ -218,15 +175,14 @@ class _HomeScreenState extends State<HomeScreen> {
                                   Text(
                                     'Total Balance',
                                     style: TextStyle(
-                                      color:
-                                          Colors.white.withValues(alpha: 0.9),
+                                      color: Colors.white.withOpacity(0.9),
                                       fontSize: 14,
                                       fontWeight: FontWeight.w500,
                                     ),
                                   ),
                                   const SizedBox(height: 8),
                                   Text(
-                                    _formatCurrency(_balance['balance']),
+                                    _formatCurrency(transactionProvider.balance['balance']),
                                     style: const TextStyle(
                                       color: Colors.white,
                                       fontSize: 36,
@@ -240,8 +196,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                         child: Container(
                                           padding: const EdgeInsets.all(16),
                                           decoration: BoxDecoration(
-                                            color: Colors.white
-                                                .withValues(alpha: 0.2),
+                                            color: Colors.white.withOpacity(0.2),
                                             borderRadius:
                                                 BorderRadius.circular(16),
                                           ),
@@ -256,15 +211,12 @@ class _HomeScreenState extends State<HomeScreen> {
                                                         const EdgeInsets.all(8),
                                                     decoration: BoxDecoration(
                                                       color: Colors.green
-                                                          .withValues(
-                                                              alpha: 0.3),
+                                                          .withOpacity(0.3),
                                                       borderRadius:
-                                                          BorderRadius.circular(
-                                                              8),
+                                                          BorderRadius.circular(8),
                                                     ),
                                                     child: const Icon(
-                                                      Icons
-                                                          .arrow_downward_rounded,
+                                                      Icons.arrow_downward_rounded,
                                                       color: Colors.white,
                                                       size: 16,
                                                     ),
@@ -274,8 +226,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                                     'Income',
                                                     style: TextStyle(
                                                       color: Colors.white
-                                                          .withValues(
-                                                              alpha: 0.9),
+                                                          .withOpacity(0.9),
                                                       fontSize: 12,
                                                     ),
                                                   ),
@@ -284,7 +235,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                               const SizedBox(height: 8),
                                               Text(
                                                 _formatCurrency(
-                                                    _balance['income']),
+                                                    transactionProvider.balance['income']),
                                                 style: const TextStyle(
                                                   color: Colors.white,
                                                   fontSize: 16,
@@ -300,8 +251,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                         child: Container(
                                           padding: const EdgeInsets.all(16),
                                           decoration: BoxDecoration(
-                                            color: Colors.white
-                                                .withValues(alpha: 0.2),
+                                            color: Colors.white.withOpacity(0.2),
                                             borderRadius:
                                                 BorderRadius.circular(16),
                                           ),
@@ -316,15 +266,12 @@ class _HomeScreenState extends State<HomeScreen> {
                                                         const EdgeInsets.all(8),
                                                     decoration: BoxDecoration(
                                                       color: Colors.red
-                                                          .withValues(
-                                                              alpha: 0.3),
+                                                          .withOpacity(0.3),
                                                       borderRadius:
-                                                          BorderRadius.circular(
-                                                              8),
+                                                          BorderRadius.circular(8),
                                                     ),
                                                     child: const Icon(
-                                                      Icons
-                                                          .arrow_upward_rounded,
+                                                      Icons.arrow_upward_rounded,
                                                       color: Colors.white,
                                                       size: 16,
                                                     ),
@@ -334,8 +281,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                                     'Expense',
                                                     style: TextStyle(
                                                       color: Colors.white
-                                                          .withValues(
-                                                              alpha: 0.9),
+                                                          .withOpacity(0.9),
                                                       fontSize: 12,
                                                     ),
                                                   ),
@@ -344,7 +290,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                               const SizedBox(height: 8),
                                               Text(
                                                 _formatCurrency(
-                                                    _balance['expense']),
+                                                    transactionProvider.balance['expense']),
                                                 style: const TextStyle(
                                                   color: Colors.white,
                                                   fontSize: 16,
@@ -374,13 +320,13 @@ class _HomeScreenState extends State<HomeScreen> {
                                   ),
                                 ),
                                 Text(
-                                  '${_transactions.length} total',
+                                  '${transactionProvider.transactions.length} total',
                                   style: TextStyle(
                                     fontSize: 14,
                                     color: Theme.of(context)
                                         .colorScheme
                                         .onSurface
-                                        .withValues(alpha: 0.6),
+                                        .withOpacity(0.6),
                                   ),
                                 ),
                               ],
@@ -389,7 +335,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
                     ),
-                    _transactions.isEmpty
+                    transactionProvider.transactions.isEmpty
                         ? SliverFillRemaining(
                             child: Center(
                               child: Column(
@@ -401,7 +347,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     color: Theme.of(context)
                                         .colorScheme
                                         .onSurface
-                                        .withValues(alpha: 0.3),
+                                        .withOpacity(0.3),
                                   ),
                                   const SizedBox(height: 16),
                                   Text(
@@ -411,7 +357,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                       color: Theme.of(context)
                                           .colorScheme
                                           .onSurface
-                                          .withValues(alpha: 0.6),
+                                          .withOpacity(0.6),
                                     ),
                                   ),
                                 ],
@@ -423,9 +369,8 @@ class _HomeScreenState extends State<HomeScreen> {
                             sliver: SliverList(
                               delegate: SliverChildBuilderDelegate(
                                 (context, index) {
-                                  final transaction = _transactions[index];
-                                  final isIncome =
-                                      transaction['type'] == 'income';
+                                  final transaction = transactionProvider.transactions[index];
+                                  final isIncome = transaction['type'] == 'income';
                                   return Container(
                                     margin: const EdgeInsets.only(bottom: 12),
                                     decoration: BoxDecoration(
@@ -436,7 +381,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                         color: Theme.of(context)
                                             .colorScheme
                                             .outlineVariant
-                                            .withValues(alpha: 0.5),
+                                            .withOpacity(0.5),
                                       ),
                                     ),
                                     child: ListTile(
@@ -445,51 +390,34 @@ class _HomeScreenState extends State<HomeScreen> {
                                         horizontal: 16,
                                         vertical: 8,
                                       ),
-
-                                      // ============================
-                                      // TAMBAHAN: tanda centang saat delete mode
-                                      // ============================
-                                      leading: _deleteMode
+                                      leading: transactionProvider.deleteMode
                                           ? Checkbox(
-                                              value: _selectedTransactions
+                                              value: transactionProvider.selectedTransactions
                                                   .contains(transaction['id']),
                                               onChanged: (value) {
-                                                setState(() {
-                                                  if (value == true) {
-                                                    _selectedTransactions
-                                                        .add(transaction['id']);
-                                                  } else {
-                                                    _selectedTransactions
-                                                        .remove(
-                                                            transaction['id']);
-                                                  }
-                                                });
+                                                transactionProvider.toggleTransactionSelection(
+                                                    transaction['id']);
                                               },
                                             )
                                           : Container(
                                               padding: const EdgeInsets.all(12),
                                               decoration: BoxDecoration(
                                                 color: isIncome
-                                                    ? Colors.green
-                                                        .withValues(alpha: 0.1)
-                                                    : Colors.red
-                                                        .withValues(alpha: 0.1),
+                                                    ? Colors.green.withOpacity(0.1)
+                                                    : Colors.red.withOpacity(0.1),
                                                 borderRadius:
                                                     BorderRadius.circular(12),
                                               ),
                                               child: Icon(
                                                 isIncome
-                                                    ? Icons
-                                                        .arrow_downward_rounded
-                                                    : Icons
-                                                        .arrow_upward_rounded,
+                                                    ? Icons.arrow_downward_rounded
+                                                    : Icons.arrow_upward_rounded,
                                                 color: isIncome
                                                     ? Colors.green
                                                     : Colors.red,
                                                 size: 20,
                                               ),
                                             ),
-
                                       title: Text(
                                         transaction['category'],
                                         style: TextStyle(
@@ -499,7 +427,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                               .onSurface,
                                         ),
                                       ),
-
                                       subtitle: transaction['description'] !=
                                                   null &&
                                               transaction['description']
@@ -514,12 +441,11 @@ class _HomeScreenState extends State<HomeScreen> {
                                                 color: Theme.of(context)
                                                     .colorScheme
                                                     .onSurface
-                                                    .withValues(alpha: 0.6),
+                                                    .withOpacity(0.6),
                                               ),
                                             )
                                           : null,
-
-                                      trailing: !_deleteMode
+                                      trailing: !transactionProvider.deleteMode
                                           ? Column(
                                               mainAxisAlignment:
                                                   MainAxisAlignment.center,
@@ -548,28 +474,20 @@ class _HomeScreenState extends State<HomeScreen> {
                                                     color: Theme.of(context)
                                                         .colorScheme
                                                         .onSurface
-                                                        .withValues(alpha: 0.5),
+                                                        .withOpacity(0.5),
                                                   ),
                                                 ),
                                               ],
                                             )
                                           : null,
                                       onTap: () async {
-                                        if (_deleteMode) {
-                                          setState(() {
-                                            if (_selectedTransactions
-                                                .contains(transaction['id'])) {
-                                              _selectedTransactions
-                                                  .remove(transaction['id']);
-                                            } else {
-                                              _selectedTransactions
-                                                  .add(transaction['id']);
-                                            }
-                                          });
+                                        if (transactionProvider.deleteMode) {
+                                          transactionProvider
+                                              .toggleTransactionSelection(
+                                                  transaction['id']);
                                           return;
                                         }
 
-                                        // 👉 MASUK KE EDIT SCREEN
                                         await Navigator.push(
                                           context,
                                           MaterialPageRoute(
@@ -580,13 +498,12 @@ class _HomeScreenState extends State<HomeScreen> {
                                           ),
                                         );
 
-                                        // 👉 Refresh data setelah edit
-                                        _loadData();
+                                        transactionProvider.loadData();
                                       },
                                     ),
                                   );
                                 },
-                                childCount: _transactions.length,
+                                childCount: transactionProvider.transactions.length,
                               ),
                             ),
                           ),
@@ -600,39 +517,28 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           FloatingActionButton(
               heroTag: "deleteBtn",
-              backgroundColor: _deleteMode ? Colors.red : Colors.grey[800],
+              backgroundColor: transactionProvider.deleteMode ? Colors.red : Colors.grey[800],
               child: Icon(
-                _deleteMode ? Icons.delete_forever : Icons.delete,
+                transactionProvider.deleteMode ? Icons.delete_forever : Icons.delete,
                 color: Colors.white,
               ),
               onPressed: () async {
-                if (!_deleteMode) {
-                  setState(() {
-                    _deleteMode = true;
-                    _selectedTransactions.clear();
-                  });
-
+                if (!transactionProvider.deleteMode) {
+                  transactionProvider.toggleDeleteMode();
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
+                    const SnackBar(
                       content: Text("Pilih transaksi yang mau dihapus"),
                     ),
                   );
                   return;
                 }
-                if (_selectedTransactions.isEmpty) {
-                  setState(() {
-                    _deleteMode = false;
-                    _selectedTransactions.clear();
-                  });
+                
+                if (transactionProvider.selectedTransactions.isEmpty) {
+                  transactionProvider.toggleDeleteMode();
                   return;
                 }
-                for (var id in _selectedTransactions) {
-                  await _deleteTransaction(id);
-                }
-                setState(() {
-                  _deleteMode = false;
-                  _selectedTransactions.clear();
-                });
+                
+                await transactionProvider.deleteSelectedTransactions();
               }),
           const SizedBox(height: 12),
           FloatingActionButton.extended(
@@ -644,7 +550,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   builder: (context) => const AddTransactionScreen(),
                 ),
               );
-              _loadData();
+              transactionProvider.loadData();
             },
             icon: const Icon(Icons.add_rounded),
             label: const Text('Add'),

@@ -1,4 +1,3 @@
-// lib/services/api_service.dart
 
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -22,7 +21,7 @@ class ApiService {
     await prefs.remove('token');
   }
 
-  // Auth Methods
+  
   Future<Map<String, dynamic>> register(String name, String email, String password) async {
     try {
       final response = await http.post(
@@ -44,7 +43,7 @@ class ApiService {
         await _saveToken(data['token']);
         return data;
       } else {
-        // Try to parse error message
+        
         try {
           final error = jsonDecode(response.body);
           throw Exception(error['message'] ?? 'Registration failed');
@@ -80,7 +79,7 @@ class ApiService {
         await _saveToken(data['token']);
         return data;
       } else {
-        // Try to parse error message
+
         try {
           final error = jsonDecode(response.body);
           throw Exception(error['message'] ?? 'Login failed');
@@ -109,7 +108,7 @@ class ApiService {
     await _removeToken();
   }
 
-  // Transaction Methods
+  
   Future<List<dynamic>> getTransactions() async {
     final token = await _getToken();
     final response = await http.get(
@@ -212,7 +211,6 @@ class ApiService {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         
-        // Ensure income_by_category and expense_by_category are Maps
         if (data['income_by_category'] == null) {
           data['income_by_category'] = {};
         }

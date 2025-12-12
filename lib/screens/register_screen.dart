@@ -1,7 +1,7 @@
-// lib/screens/register_screen.dart
 
 import 'package:flutter/material.dart';
-import '../services/api_service.dart';
+import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
 import 'home_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -16,44 +16,40 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _apiService = ApiService();
-  bool _isLoading = false;
   bool _obscurePassword = true;
-
-  Future<void> _register() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    setState(() => _isLoading = true);
-
-    try {
-      await _apiService.register(
-        _nameController.text,
-        _emailController.text,
-        _passwordController.text,
-      );
-
-      if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const HomeScreen()),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.toString()),
-            backgroundColor: Theme.of(context).colorScheme.error,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
+    final authProvider = Provider.of<AuthProvider>(context);
+
+    Future<void> _register() async {
+      if (!_formKey.currentState!.validate()) return;
+
+      try {
+        await authProvider.register(
+          _nameController.text,
+          _emailController.text,
+          _passwordController.text,
+        );
+
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const HomeScreen()),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(e.toString()),
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+          );
+        }
+      }
+    }
+
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surfaceContainerLowest,
       appBar: AppBar(
@@ -196,13 +192,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     width: double.infinity,
                     height: 56,
                     child: FilledButton(
-                      onPressed: _isLoading ? null : _register,
+                      onPressed: authProvider.isLoading ? null : _register,
                       style: FilledButton.styleFrom(
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16),
                         ),
                       ),
-                      child: _isLoading
+                      child: authProvider.isLoading
                           ? const SizedBox(
                               height: 20,
                               width: 20,

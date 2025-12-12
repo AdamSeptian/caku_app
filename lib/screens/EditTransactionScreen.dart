@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../services/api_service.dart';
+import 'package:provider/provider.dart';
+import '../providers/transaction_provider.dart';
 
 class EditTransactionScreen extends StatefulWidget {
   final Map<String, dynamic> transaction;
@@ -19,11 +20,9 @@ class _EditTransactionScreenState extends State<EditTransactionScreen> {
   final _amountController = TextEditingController();
   final _categoryController = TextEditingController();
   final _descriptionController = TextEditingController();
-  final _apiService = ApiService();
 
   String _type = 'expense';
   DateTime _selectedDate = DateTime.now();
-  bool _isLoading = false;
 
   final List<String> _incomeCategories = [
     'Salary', 'Bonus', 'Investment', 'Freelance', 'Business', 'Gift', 'Other'
@@ -57,50 +56,47 @@ class _EditTransactionScreenState extends State<EditTransactionScreen> {
     }
   }
 
-  Future<void> _updateTransaction() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    setState(() => _isLoading = true);
-
-    try {
-      await _apiService.updateTransaction(
-        widget.transaction['id'],
-        {
-          'type': _type,
-          'amount': double.parse(_amountController.text),
-          'category': _categoryController.text,
-          'description': _descriptionController.text,
-          'date': DateFormat('yyyy-MM-dd').format(_selectedDate),
-        },
-      );
-
-      if (mounted) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Transaction updated successfully'),
-            backgroundColor: Theme.of(context).colorScheme.primary,
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Theme.of(context).colorScheme.error,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
+    final transactionProvider = Provider.of<TransactionProvider>(context);
     final currentCategories =
         _type == 'income' ? _incomeCategories : _expenseCategories;
+
+    Future<void> _updateTransaction() async {
+      if (!_formKey.currentState!.validate()) return;
+
+      try {
+        await transactionProvider.updateTransaction(
+          widget.transaction['id'],
+          {
+            'type': _type,
+            'amount': double.parse(_amountController.text),
+            'category': _categoryController.text,
+            'description': _descriptionController.text,
+            'date': DateFormat('yyyy-MM-dd').format(_selectedDate),
+          },
+        );
+
+        if (mounted) {
+          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Transaction updated successfully'),
+              backgroundColor: Theme.of(context).colorScheme.primary,
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error: $e'),
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+          );
+        }
+      }
+    }
 
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surfaceContainerLowest,
@@ -214,7 +210,6 @@ class _EditTransactionScreenState extends State<EditTransactionScreen> {
 
               const SizedBox(height: 32),
 
-              // Amount
               Text(
                 'Amount',
                 style: TextStyle(
@@ -251,7 +246,6 @@ class _EditTransactionScreenState extends State<EditTransactionScreen> {
 
               const SizedBox(height: 24),
 
-              // Category
               Text(
                 'Category',
                 style: TextStyle(
@@ -298,7 +292,6 @@ class _EditTransactionScreenState extends State<EditTransactionScreen> {
 
               const SizedBox(height: 24),
 
-              // Description
               Text(
                 'Description (Optional)',
                 style: TextStyle(
@@ -324,7 +317,6 @@ class _EditTransactionScreenState extends State<EditTransactionScreen> {
 
               const SizedBox(height: 24),
 
-              // Date Picker
               Text(
                 'Date',
                 style: TextStyle(
@@ -367,12 +359,11 @@ class _EditTransactionScreenState extends State<EditTransactionScreen> {
 
               const SizedBox(height: 32),
 
-              // Save Button (Update)
               SizedBox(
                 width: double.infinity,
                 height: 56,
                 child: FilledButton(
-                  onPressed: _isLoading ? null : _updateTransaction,
+                  onPressed: transactionProvider.isLoading ? null : _updateTransaction,
                   style: FilledButton.styleFrom(
                     backgroundColor:
                         _type == 'income' ? Colors.green : Colors.red,
@@ -380,7 +371,7 @@ class _EditTransactionScreenState extends State<EditTransactionScreen> {
                       borderRadius: BorderRadius.circular(16),
                     ),
                   ),
-                  child: _isLoading
+                  child: transactionProvider.isLoading
                       ? const CircularProgressIndicator(
                           strokeWidth: 2,
                           color: Colors.white,
